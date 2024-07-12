@@ -10,9 +10,15 @@ struct StringWrapperWrapper: PartialConvertible, Hashable {
         self.optionalStringWrapper = optionalStringWrapper
     }
 
-    init<PartialType: PartialProtocol>(partial: PartialType) throws where PartialType.Wrapped == StringWrapperWrapper {
+    init(partial: Partial<Self>) throws {
         stringWrapper = try partial.value(for: \.stringWrapper)
         optionalStringWrapper = try partial.value(for: \.optionalStringWrapper)
     }
 
+    func partial() -> Partial<Self> {
+        var partial = Partial<Self>()
+        partial.stringWrapper = stringWrapper
+        partial.optionalStringWrapper = optionalStringWrapper
+        return partial
+    }
 }

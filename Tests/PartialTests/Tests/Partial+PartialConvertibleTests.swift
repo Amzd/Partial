@@ -44,7 +44,7 @@ final class Partial_PartialConvertibleTests: QuickSpec {
                     }
 
                     it("should not overwrite the value") {
-                        expect(partial[keyPath]) == initialValue
+                        expect(partial[dynamicMember: keyPath]) == initialValue
                     }
                 }
 
@@ -57,7 +57,7 @@ final class Partial_PartialConvertibleTests: QuickSpec {
 
                         do {
                             var partialStringWrapper = Partial<StringWrapper>()
-                            partialStringWrapper[\.string] = unwrapped.string
+                            partialStringWrapper.string = unwrapped.string
                             try partial.setValue(partialStringWrapper, for: keyPath)
                         } catch {
                             thrownError = error
@@ -69,7 +69,7 @@ final class Partial_PartialConvertibleTests: QuickSpec {
                     }
 
                     it("should set the key path to the unwrapped value") {
-                        expect(partial[keyPath]) == unwrapped
+                        expect(partial[dynamicMember: keyPath]) == unwrapped
                     }
                 }
 
@@ -110,7 +110,7 @@ final class Partial_PartialConvertibleTests: QuickSpec {
                             }
                         }
                         it("should set the key path to the value returned by the unwrapper") {
-                            expect(partial[keyPath]) == returnedValue
+                            expect(partial[dynamicMember: keyPath]) == returnedValue
                         }
                     }
                 }
@@ -146,7 +146,7 @@ final class Partial_PartialConvertibleTests: QuickSpec {
                     }
 
                     it("should not overwrite the value") {
-                        expect(partial[keyPath]) == initialValue
+                        expect(partial[dynamicMember: keyPath]) == initialValue
                     }
                 }
 
@@ -159,7 +159,7 @@ final class Partial_PartialConvertibleTests: QuickSpec {
 
                         do {
                             var partialStringWrapper = Partial<StringWrapper>()
-                            partialStringWrapper[\.string] = unwrapped.string
+                            partialStringWrapper[dynamicMember: \.string] = unwrapped.string
                             try partial.setValue(partialStringWrapper, for: keyPath)
                         } catch {
                             thrownError = error
@@ -171,7 +171,7 @@ final class Partial_PartialConvertibleTests: QuickSpec {
                     }
 
                     it("should set the key path to the unwrapped value") {
-                        expect(partial[keyPath]) == unwrapped
+                        expect(partial[dynamicMember: keyPath]) == unwrapped
                     }
                 }
 
@@ -212,7 +212,7 @@ final class Partial_PartialConvertibleTests: QuickSpec {
                             }
                         }
                         it("should set the key path to the value returned by the unwrapper") {
-                            expect(partial[keyPath]) == returnedValue
+                            expect(partial[dynamicMember: keyPath]) == returnedValue
                         }
                     }
                 }
@@ -231,8 +231,8 @@ final class Partial_PartialConvertibleTests: QuickSpec {
                         let stringWrapper = StringWrapper(stringLiteral: "string wrapper")
                         let optionaStringWrapper = StringWrapper(stringLiteral: "optional string wrapper")
                         unwrapped = StringWrapperWrapper(stringWrapper: stringWrapper, optionalStringWrapper: optionaStringWrapper)
-                        partial[\.stringWrapper] = stringWrapper
-                        partial[\.optionalStringWrapper] = optionaStringWrapper
+                        partial[dynamicMember: \.stringWrapper] = stringWrapper
+                        partial[dynamicMember: \.optionalStringWrapper] = optionaStringWrapper
                     }
 
                     it("should not throw an error") {

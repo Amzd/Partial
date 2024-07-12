@@ -1,6 +1,6 @@
 /// A type that can be initialised with a `Partial` value that wraps itself
 public protocol PartialConvertible {
-
+    
     /// Create a new instance of this type, retrieving values from the partial.
     ///
     /// `Partial` provides convenience functions that throw relevant errors:
@@ -10,6 +10,8 @@ public protocol PartialConvertible {
     /// ```
     ///
     /// - Parameter partial: The partial to retrieve values from
-    init<PartialType: PartialProtocol>(partial: PartialType) throws where PartialType.Wrapped == Self
-
+    init(partial: Partial<Self>) throws
+    
+    func partial() -> Partial<Self>
+    
 }
