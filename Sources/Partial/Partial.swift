@@ -19,9 +19,9 @@ public struct Partial<Wrapped>: CustomStringConvertible {
     /// The values that have been set.
     private var values: [PartialKeyPath<Wrapped>: Any] = [:] {
         willSet {
-            assert(newValue.keys.contains { keyPath in
+            assert(newValue.keys.allSatisfy { keyPath in
                 String(describing: keyPath).contains(".", amount: 1)
-            })
+            }, "This should not be possible but a value with multiple KeyPath steps was set")
         }
     }
     
@@ -29,22 +29,24 @@ public struct Partial<Wrapped>: CustomStringConvertible {
     public init() {}
     
     @_disfavoredOverload
-    public subscript<Value:PartialConvertible>(dynamicMember keyPath: KeyPath<Wrapped, Value>) -> Value? {
+    public subscript<Value: PartialConvertible>(dynamicMember keyPath: KeyPath<Wrapped, Value>) -> Partial<Value> {
         get {
             let value = values[keyPath]
-            if let partial = value as? Partial<Value> {
-                return try? partial.unwrapped()
-            }
-            return value as? Value
+            return value as? Partial<Value> ?? (value as? Value)?.partial() ?? .init()
         }
-        set {
-            values[keyPath] = newValue?.partial()
-        }
+        set { values[keyPath] = newValue }
     }
     
-    public subscript<Value: PartialConvertible>(dynamicMember keyPath: KeyPath<Wrapped, Value>) -> Partial<Value> {
-        get { values[keyPath] as? Partial<Value> ?? .init() }
-        set { values[keyPath] = newValue }
+    /// Retrieve or set a `PartialConvertible` value for a given path. Will save as `Partial<Value>` and unwrap it to a `Value` when returning.
+    ///
+    /// - Parameter keyPath: A key path from `Wrapped` to a property of type `Value`.
+    /// - Returns: The stored Partivalue, or `nil` if a value has not been set.
+    public subscript<Value: PartialConvertible>(dynamicMember keyPath: KeyPath<Wrapped, Value>) -> Value? {
+        get {
+            let value = values[keyPath]
+            return try? value as? Value ?? (value as? Partial<Value>)?.unwrapped()
+        }
+        set { values[keyPath] = newValue?.partial() }
     }
     
     /// Retrieve or set a value for the given key path. Returns `nil` if the value has not been set. If the value is set
@@ -58,7 +60,13 @@ public struct Partial<Wrapped>: CustomStringConvertible {
         set { values[keyPath] = newValue }
     }
     
+    
+    public func value<Value: PartialConvertible>(for keyPath: KeyPath<Wrapped, Value>) throws -> Value {
+        assert(String(describing: keyPath).contains(".", amount: 1), "Only use one step deep KeyPaths")
+        return try self[dynamicMember: keyPath] ?? { throw Error.keyPathNotSet(keyPath) }()
+    }
     public func value<Value>(for keyPath: KeyPath<Wrapped, Value>) throws -> Value {
+        assert(String(describing: keyPath).contains(".", amount: 1), "Only use one step deep KeyPaths")
         return try self[dynamicMember: keyPath] ?? { throw Error.keyPathNotSet(keyPath) }()
     }
 }
@@ -85,5 +93,12 @@ private extension String {
             }
             return count <= amount
         } && count == amount
+    }
+}
+
+
+extension Partial: Equatable where Wrapped: Equatable {
+    public static func == (lhs: Partial<Wrapped>, rhs: Partial<Wrapped>) -> Bool {
+        <#code#>
     }
 }

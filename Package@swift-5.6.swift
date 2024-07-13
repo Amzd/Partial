@@ -10,13 +10,13 @@ let package = Package(
         .library(name: "Partial", targets: ["Partial"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/Quick/Quick.git", from: "4.0.0"),
-        .package(url: "https://github.com/Quick/Nimble.git", from: "9.2.1"),
         .package(url: "https://github.com/apple/swift-docc-plugin.git", exact: "1.0.0"),
     ],
     targets: [
         .target(name: "Partial"),
-        .testTarget(name: "PartialTests", dependencies: ["Partial", "Quick", "Nimble"]),
+        .testTarget(name: "PartialTests", dependencies: [
+            "Partial",
+        ]),
     ],
     swiftLanguageVersions: [.v5]
 )

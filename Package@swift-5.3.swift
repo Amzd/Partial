@@ -10,12 +10,12 @@ let package = Package(
         .library(name: "Partial", targets: ["Partial"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/Quick/Quick.git", from: "4.0.0"),
-        .package(url: "https://github.com/Quick/Nimble.git", from: "9.2.1"),
     ],
     targets: [
         .target(name: "Partial"),
-        .testTarget(name: "PartialTests", dependencies: ["Partial", "Quick", "Nimble"]),
+        .testTarget(name: "PartialTests", dependencies: [
+            "Partial",
+        ]),
     ],
     swiftLanguageVersions: [.v5]
 )
