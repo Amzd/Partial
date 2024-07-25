@@ -95,10 +95,3 @@ private extension String {
         } && count == amount
     }
 }
-
-
-extension Partial: Equatable where Wrapped: Equatable {
-    public static func == (lhs: Partial<Wrapped>, rhs: Partial<Wrapped>) -> Bool {
-        <#code#>
-    }
-}
