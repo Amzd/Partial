@@ -13,7 +13,7 @@ public struct Partial<Wrapped>: CustomStringConvertible {
     
     /// A textual representation of the Partial's values.
     public var description: String {
-        var valueDescriptions = values.map { key, value in
+        let valueDescriptions = values.map { key, value in
             let keyDescription = String(describing: key).replacingOccurrences(of: "\\\(Wrapped.self).", with: "")
             return "\(keyDescription): \(value)"
         }
@@ -32,7 +32,10 @@ public struct Partial<Wrapped>: CustomStringConvertible {
     /// Create an empty `Partial`.
     public init() {}
     
-    @_disfavoredOverload
+    /// Retrieve or set a `Partial<Value>` for a given path if the value you are requesting is PartialConvertible.
+    ///
+    /// - Parameter keyPath: A key path from `Wrapped` to a property of type `Value`.
+    /// - Returns: The stored value, or `nil` if a value has not been set.
     public subscript<Value: PartialConvertible>(dynamicMember keyPath: KeyPath<Wrapped, Value>) -> Partial<Value> {
         get {
             let value = values[keyPath]
@@ -44,11 +47,11 @@ public struct Partial<Wrapped>: CustomStringConvertible {
     /// Retrieve or set a `PartialConvertible` value for a given path. Will save as `Partial<Value>` and unwrap it to a `Value` when returning.
     ///
     /// - Parameter keyPath: A key path from `Wrapped` to a property of type `Value`.
-    /// - Returns: The stored Partivalue, or `nil` if a value has not been set.
+    /// - Returns: The stored value, or `nil` if a value has not been set.
     public subscript<Value: PartialConvertible>(dynamicMember keyPath: KeyPath<Wrapped, Value>) -> Value? {
         get {
             let value = values[keyPath]
-            return try? value as? Value ?? (value as? Partial<Value>)?.unwrapped()
+            return try? value as? Value ?? (value as? Partial<Value>)?.complete()
         }
         set { values[keyPath] = newValue?.partial() }
     }
@@ -69,9 +72,42 @@ public struct Partial<Wrapped>: CustomStringConvertible {
         assert(String(describing: keyPath).contains(".", amount: 1), "Only use one step deep KeyPaths")
         return try self[dynamicMember: keyPath] ?? { throw Error.keyPathNotSet(keyPath) }()
     }
+    public func value<Value: PartialConvertible>(for keyPath: KeyPath<Wrapped, Value?>) throws -> Value? {
+        assert(String(describing: keyPath).contains(".", amount: 1), "Only use one step deep KeyPaths")
+        return self[dynamicMember: keyPath]
+    }
     public func value<Value>(for keyPath: KeyPath<Wrapped, Value>) throws -> Value {
         assert(String(describing: keyPath).contains(".", amount: 1), "Only use one step deep KeyPaths")
         return try self[dynamicMember: keyPath] ?? { throw Error.keyPathNotSet(keyPath) }()
+    }
+}
+
+// MARK: - Optional
+
+extension Partial {
+    /// Helper function that returns a `Partial<PartialConvertible>` for an `Optional<PartialConvertible>`
+    public subscript<Value: PartialConvertible>(dynamicMember keyPath: KeyPath<Wrapped, Value?>) -> Partial<Value> {
+        get {
+            let value = values[keyPath]
+            return value as? Partial<Value> ?? (value as? Value)?.partial() ?? .init()
+        }
+        set { values[keyPath] = newValue }
+    }
+    
+    /// Helper function that returns a Optional types instead of wrapping them in another Optional while storing PartialConvertible types as Partial.
+    public subscript<Value: PartialConvertible>(dynamicMember keyPath: KeyPath<Wrapped, Value?>) -> Value? {
+        get {
+            let value = values[keyPath]
+            return try? value as? Value ?? (value as? Partial<Value>)?.complete()
+        }
+        set { values[keyPath] = newValue?.partial() }
+    }
+    
+    /// Helper function that returns Optional types instead of wrapping them in another Optional
+    @_disfavoredOverload
+    public subscript<Value>(dynamicMember keyPath: KeyPath<Wrapped, Value?>) -> Value? {
+        get { values[keyPath] as? Value }
+        set { values[keyPath] = newValue }
     }
 }
 
@@ -82,13 +118,14 @@ extension Partial where Wrapped: PartialConvertible {
     /// Any errors thrown by `Wrapped.init(partial:)` will be rethrown
     ///
     /// - Returns: The new `Wrapped` instance
-    public func unwrapped() throws -> Wrapped {
+    public func complete() throws -> Wrapped {
         return try Wrapped(partial: self)
     }
     
 }
 
 private extension String {
+    /// Helper for assertions. This is not called in any production code.
     func contains(_ element: Element, amount: Int) -> Bool {
         var count = 0
         return allSatisfy { char in

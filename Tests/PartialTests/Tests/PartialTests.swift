@@ -7,17 +7,16 @@ import SwiftSyntax
 struct Foo {
     var str: String
     var bar: Bar
+    var opt: Bool?
+    var optBar: Bar?
 }
 
-struct Bar: PartialConvertible, Equatable {
+struct Bar: Equatable {
     var str: String
     var baz: Baz
-    
-    init(str: String, baz: Baz) {
-        self.str = str
-        self.baz = baz
-    }
-    
+}
+
+extension Bar: PartialConvertible {
     init(partial: Partial<Self>) throws {
         self.str = try partial.value(for: \.str)
         self.baz = try partial.value(for: \.baz)
@@ -34,10 +33,6 @@ struct Bar: PartialConvertible, Equatable {
 @PartialConvertible
 struct Baz: Equatable {
     var str: String
-    
-    init(str: String) {
-        self.str = str
-    }
 }
 
 
@@ -91,6 +86,21 @@ final class PartialTests: XCTestCase {
         // Partial value stays
         XCTAssertEqual(partial.bar.baz, Baz(str: "world"))
         XCTAssertEqual(partial.bar.baz.str, "world")
+        
+        // Optionals
+        partial.opt = nil
+        XCTAssertNil(partial.opt)
+        partial.opt = true
+        XCTAssertEqual(partial.opt, true)
+        partial.opt = nil
+        XCTAssertNil(partial.opt)
+        partial.optBar = nil
+        partial.optBar.str = "hello"
+        XCTAssertEqual(partial.optBar.str, "hello")
+        partial.optBar.baz.str = "world"
+        XCTAssertEqual(partial.optBar.baz.str, "world")
+        print(partial)
+        XCTAssertEqual(partial.optBar, Bar(str: "hello", baz: Baz(str: "world")))
     }
     
     func testMacro() {
