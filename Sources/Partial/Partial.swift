@@ -13,7 +13,11 @@ public struct Partial<Wrapped>: CustomStringConvertible {
     
     /// A textual representation of the Partial's values.
     public var description: String {
-        return "\(type(of: self))(values: \(String(describing: values)))"
+        var valueDescriptions = values.map { key, value in
+            let keyDescription = String(describing: key).replacingOccurrences(of: "\\\(Wrapped.self).", with: "")
+            return "\(keyDescription): \(value)"
+        }
+        return "\(type(of: self))(\(valueDescriptions.joined(separator: ", ")))"
     }
     
     /// The values that have been set.
