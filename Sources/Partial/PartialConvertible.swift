@@ -15,3 +15,8 @@ public protocol PartialConvertible {
     func partial() -> Partial<Self>
     
 }
+
+#if swift(>=5.9)
+@attached(extension, conformances: PartialConvertible, names: named(init(partial:)), named(partial()))
+public macro PartialConvertible() = #externalMacro(module: "PartialMacro", type: "PartialConvertibleMacro")
+#endif

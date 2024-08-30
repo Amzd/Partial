@@ -1,5 +1,8 @@
 import XCTest
 @testable import Partial
+@testable import PartialMacro
+import SwiftSyntaxMacroExpansion
+import SwiftSyntax
 
 struct Foo {
     var str: String
@@ -28,21 +31,12 @@ struct Bar: PartialConvertible, Equatable {
     }
 }
 
-struct Baz: PartialConvertible, Equatable {
+@PartialConvertible
+struct Baz: Equatable {
     var str: String
     
     init(str: String) {
         self.str = str
-    }
-    
-    init(partial: Partial<Self>) throws {
-        self.str = try partial.value(for: \.str)
-    }
-    
-    func partial() -> Partial<Self> {
-        var partial = Partial<Self>()
-        partial.str = str
-        return partial
     }
 }
 
@@ -98,5 +92,51 @@ final class PartialTests: XCTestCase {
         XCTAssertEqual(partial.bar.baz, Baz(str: "world"))
         XCTAssertEqual(partial.bar.baz.str, "world")
     }
+    
+    func testMacro() {
+        let source: SourceFileSyntax =
+            """
+            @PartialConvertible
+            struct Foo {
+                var str: String
+                var bar: Bar
+            }
+            """
+        
+        let file = BasicMacroExpansionContext.KnownSourceFile(
+            moduleName: "MyModule",
+            fullFilePath: "test.swift"
+        )
+        
+        let context = BasicMacroExpansionContext(sourceFiles: [source: file])
+        
+        let transformedSF = source.expand(
+            macros:["PartialConvertible": PartialConvertibleMacro.self],
+            in: context
+        )
+        
+        let expectedDescription =
+            """
+            
+            struct Foo {
+                var str: String
+                var bar: Bar
+            }
+            
+            extension Foo: PartialConvertible {
+                init(partial: Partial<Self>) throws {
+                    self.str = try partial.value(for: \\.str)
+                    self.bar = try partial.value(for: \\.bar)
+                }
+                func partial() -> Partial<Self> {
+                    var partial = Partial<Self>()
+                    partial.str = str
+                    partial.bar = bar
+                    return partial
+                }
+            }
+            """
+        
+        XCTAssertEqual(transformedSF.description, expectedDescription)
+    }
 }
-
