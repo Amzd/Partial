@@ -4,7 +4,8 @@ import XCTest
 import SwiftSyntaxMacroExpansion
 import SwiftSyntax
 
-struct Foo {
+@PartialConvertible
+struct Foo: Equatable {
     var str: String
     var bar: Bar
     var opt: Bool?
@@ -34,7 +35,6 @@ extension Bar: PartialConvertible {
 struct Baz: Equatable {
     var str: String
 }
-
 
 final class PartialTests: XCTestCase {
 
@@ -83,6 +83,7 @@ final class PartialTests: XCTestCase {
         partial.bar.str = nil
         XCTAssertNil(partial.bar)
         XCTAssertNil(partial.bar.str)
+        
         // Partial value stays
         XCTAssertEqual(partial.bar.baz, Baz(str: "world"))
         XCTAssertEqual(partial.bar.baz.str, "world")
@@ -99,8 +100,13 @@ final class PartialTests: XCTestCase {
         XCTAssertEqual(partial.optBar.str, "hello")
         partial.optBar.baz.str = "world"
         XCTAssertEqual(partial.optBar.baz.str, "world")
-        print(partial)
         XCTAssertEqual(partial.optBar, Bar(str: "hello", baz: Baz(str: "world")))
+        // If all required values are set, complete should succeed
+        partial.bar.str = "hello"
+        XCTAssertEqual(try partial.complete(), Foo(str: "hi", bar: Bar(str: "hello", baz: Baz(str: "world")), opt: nil, optBar: Bar(str: "hello", baz: Baz(str: "world"))))
+        // If any optional value is unset, complete should still succeed
+        partial.optBar.baz.str = nil
+        XCTAssertEqual(try partial.complete(), Foo(str: "hi", bar: Bar(str: "hello", baz: Baz(str: "world")), opt: nil, optBar: nil))
     }
     
     func testMacro() {
