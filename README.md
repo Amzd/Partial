@@ -12,170 +12,35 @@
 Partial is a type-safe wrapper that mirrors the properties of the wrapped type but makes each property optional.
 
 ```swift
-var partialSize = Partial<CGSize>()
+@PartialConvertible
+struct Size {
+    let width: Int
+    let height: Int
+}
+
+var partialSize = Partial<Size>()
 
 partialSize.width = 6016
 partialSize.height = 3384
-try CGSize(partial: partialSize) // `CGSize(width: 6016, height: 3384)`
+try partialSize.complete() // `Size(width: 6016, height: 3384)`
 
 partialSize.height = nil
-try CGSize(partial: partialSize) // Throws `Partial<CGSize>.Error<CGFloat>.keyPathNotSet(\.height)`
+try partialSize.complete() // Throws `Partial<Size>.Error<Int>.keyPathNotSet(\.height)`
 ```
-
-# Documentation
-
-Partial is fully documented, with [generated DocC documentation available online](https://josephduffy.github.io/Partial/documentation/partial/). The online documentation is generated from the source code with every release, so it is up-to-date with the latest release, but may be different to the code in `master`.
 
 ## Usage overview
 
 Partial has a `KeyPath`-based API, allowing it to be fully type-safe. Setting, retrieving, and removing key paths is possible via dynamic member lookup or functions.
 
 ```swift
-var partialSize = Partial<CGSize>()
-
-// Set key paths
+var partialSize = Partial<Size>()
+// Set value
 partialSize.width = 6016
-partialSize.setValue(3384, for: \.height)
-
-// Retrieve key paths
+// Retrieve value
 partialSize.width // `Optional<CGFloat>(6016)`
 try partialSize.value(for: \.height) // `3384`
-
-// Remove key paths
+// Remove value
 partialSize.width = nil
-partialSize.removeValue(for: \.width)
-```
-
-## Key path considerations
-
-Key paths in Swift are very powerful, but by being so powerful they create a couple of caveats with the usage of partial.
-
-In general **I highly recommend you do not use key paths to a property of a property**. The reason for this is 2 fold:
-
-- It creates ambiguity when unwrapping a partial
-- Dynamic member lookup does not support key paths to a property of a property
-
-```swift
-struct SizeWrapper: PartialConvertible {
-    let size: CGSize
-
-    init<PartialType: PartialProtocol>(partial: PartialType) throws where PartialType.Wrapped == SizeWrapper {
-        // Should unwrap `size` directly...
-        size = try partial.value(for: \.size)
-        // ... or unwrap each property of `size`?
-        let width = try partial.value(for: \.size.width)
-        let height = try partial.value(for: \.size.height)
-        size = CGSize(width: width, height: height)
-    }
-}
-
-var sizeWrapperPartial = Partial<SizeWrapper>()
-sizeWrapperPartial.size.width = 6016 // This is not possible
-```
-
-## Building complex types
-
-Since `Partial` is a value type it is not suitable for being passed between multiple pieces of code. To allow for a single instance of a type to be constructed the `PartialBuilder` class is provided, which also provides the ability to subscribe to updates.
-
-```swift
-let sizeBuilder = PartialBuilder<CGSize>()
-let allChangesSubscription = sizeBuilder.subscribeToAllChanges { (keyPath: PartialKeyPath<CGSize>, builder: PartialBuilder<CGSize>) in
-    print("\(keyPath) was updated")
-}
-var widthSubscription = sizeBuilder.subscribeForChanges(to: \.width) { update in
-    print("width has been updated from \(update.oldValue) to \(update.newValue)")
-}
-
-// Notifies both subscribers
-partial[\.width] = 6016
-
-// Notifies the all changes subscriber
-partial[\.height] = 3384
-
-// Subscriptions can be manually cancelled
-allChangesSubscription.cancel()
-// Notifies the width subscriber
-partial[\.width] = 6016
-
-// Subscriptions will be cancelled when deallocated
-widthSubscription = nil
-// Does not notify any subscribers
-partial[\.width] = 6016
-```
-
-When building a more complex type I recommend using a builder per-property and using the builders to set the key paths on the root builder:
-
-```swift
-struct Root {
-    let size1: CGSize
-    let size2: CGSize
-}
-
-let rootBuilder = PartialBuilder<Root>()
-let size1Builder = rootBuilder.builder(for: \.size1)
-let size2Builder = rootBuilder.builder(for: \.size2)
-
-size1Builder.setValue(1, for: \.width)
-size1Builder.setValue(2, for: \.height)
-
-// These will evaluate to `true`
-try? size1Builder.unwrapped() == CGSize(width: 1, height: 2)
-try? rootBuilder.value(for: \.size1) == CGSize(width: 1, height: 2)
-try? rootBuilder.value(for: \.size2) == nil
-```
-
-The per-property builders are synchronized using a `Subscription`. You can cancel the subscription by using `PropertyBuilder.detach()`, like so:
-
-```swift
-size2Builder.detach()
-size2Builder.setValue(3, for: \.width)
-size2Builder.setValue(4, for: \.height)
-
-// These will evaluate to `true`
-try? size2Builder.unwrapped() == CGSize(width: 3, height: 4)
-try? rootBuilder.value(for: \.size2) == nil
-```
-
-## Dealing with `Optional`s
-
-Partials mirror the properties of the wrapping type exactly, meaning that optional properties will still be optional. This isn't much of a problem with the `value(for:)` and `setValue(_:for:)` functions, but can be a bit more cumbersome when using dynamic member lookup because the optional will be wrapped in another optional.
-
-These examples will use a type that has an optional property:
-
-```swift
-struct Foo {
-    let bar: String?
-}
-var fooPartial = Partial<Foo>()
-```
-
-Setting and retrieving optional values with the `setValue(_:for:)` and `value(for:)` functions does not require anything special:
-
-```swift
-try fooPartial.value(for: \.bar) // Throws `Partial<Foo>.Error<String?>.keyPathNotSet(\.bar)`
-fooPartial.setValue(nil, for: \.bar)
-try fooPartial.value(for: \.bar) // Returns `String?.none`
-```
-
-However using dynamic member lookup requires a little more consideration:
-
-```swift
-fooPartial.bar = String?.none // Sets the value to `nil`
-fooPartial.bar = nil // Removes the value. Equivalent to setting to `String??.none`
-```
-
-When retrieving values it can be necessary to unwrap the value twice:
-
-```swift
-if let setValue = fooPartial.bar {
-    if let unwrapped = setValue {
-        print("`bar` has been set to", unwrapped)
-    } else {
-        print("`bar` has been set to `nil`")
-    }
-} else {
-    print("`bar` has not been set")
-}
 ```
 
 ## Adding support to your own types
@@ -184,62 +49,55 @@ Adopting the `PartialConvertible` protocol declares that a type can be initialis
 
 ```swift
 protocol PartialConvertible {
-    init<PartialType: PartialProtocol>(partial: PartialType) throws where PartialType.Wrapped == Self
+    init(partial: Partial<Self>) throws
+    func partial() -> Partial<Self>
 }
 ```
 
-The `value(for:)` function will throw an error if the key path has not been set, which can be useful when adding conformance. For example, to add `PartialConvertible` conformance to `CGSize` you could use `value(for:)` to retrieve the `width` and `height` values:
+The `@PartialConvertible` macro can be used for adding conformance to your own type.
+
+To add `PartialConvertible` conformance to an imported type like `CGSize` you can use `value(for:)` which will throw if a non-optional value was nil, to retrieve the `width` and `height` values:
 
 ```swift
 extension CGSize: PartialConvertible {
-    public init<PartialType: PartialProtocol>(partial: PartialType) throws where PartialType.Wrapped == CGSize {
-        let width = try partial.value(for: \.width)
-        let height = try partial.value(for: \.height)
-        self.init(width: width, height: height)
+    public init(partial: Partial<Self>) throws {
+        self.init(
+            width: try partial.value(for: \.width),
+            height: try partial.value(for: \.height)
+        )
+    }
+    
+    public func partial() -> Partial<Self> {
+        var partial = Partial<Self>()
+        partial.width = width
+        partial.height = height
+        return partial
     }
 }
 ```
 
-As a convenience it's then possible to unwrap partials that wrap a type that conforms to `PartialConvertible`:
+As a convenience it's then possible to complete partials of a type that conforms to `PartialConvertible`:
 
 ```swift
-let sizeBuilder = PartialBuilder<CGSize>()
+let partialSize = Partial<CGSize>()
 // ...
-let size = try! sizeBuilder.unwrapped()
+let size = try partialSize.complete()
 ```
 
-It is also possible to set a key path to a partial value. If the unwrapping fails the key path will not be updated and the error will be thrown:
+`PartialConvertible` conforming types also automatically convert to Partial when accesed through another Partial:
 
 ```swift
 struct Foo {
     let size: CGSize
-}
+} 
 
-var partialFoo = Partial<Foo>()
-var partialSize = Partial<CGSize>()
+var partial = Partial<Foo>()
+partial.size.width = 3 // Possible because CGSize is PartialConvertible
+partial.size.height = 5
+try partial.complete() // `Foo(size: CGSize(width: 3, height: 5))`
 
-partialSize[\.width] = 6016
-try partialFoo.setValue(partialSize, for: \.size) // Throws `Partial<CGSize>.Error.keyPathNotSet(\.height)`
-
-partialSize[\.height] = 3384
-try partialFoo.setValue(partialSize, for: \.size) // Sets `size` to `CGSize(width: 6016, height: 3384)`
-```
-
-## Using the Property Wrapper
-
-`PartiallyBuilt` is a property wrapper that can be applied to any `PartialConvertible` property. The property wrapper's `projectedValue` is a `PartialBuilder`, allowing for the following usage:
-
-```swift
-struct Foo {
-    @PartiallyBuilt<CGSize>
-    var size: CGSize?
-}
-
-var foo = Foo()
-foo.size // nil
-foo.$size.width = 1024
-foo.$size.height = 720
-foo.size // CGSize(width: 1024, height: 720)
+partial.size.height = nil
+try partial.complete() // Throws `Partial<CGSize>.Error<CGFloat>.keyPathNotSet(\.height)`
 ```
 
 # Tests and CI
