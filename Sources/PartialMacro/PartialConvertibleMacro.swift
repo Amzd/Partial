@@ -5,7 +5,7 @@ import MacroToolkit
 enum PartialConvertibleMacro: ExtensionMacro {
     static func expansion(of node: AttributeSyntax, attachedTo declaration: some DeclGroupSyntax, providingExtensionsOf type: some TypeSyntaxProtocol, conformingTo protocols: [TypeSyntax], in context: some MacroExpansionContext) throws -> [ExtensionDeclSyntax] {
         let properties = DeclGroup(declaration).properties.map(\.identifier)
-        
+
         return [try ExtensionDeclSyntax("""
         extension \(type.trimmed): PartialConvertible {
             init(partial: Partial<Self>) throws {

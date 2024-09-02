@@ -87,6 +87,7 @@ let size = try partialSize.complete()
 `PartialConvertible` conforming types also automatically convert to Partial when accesed through another Partial:
 
 ```swift
+@PartialConvertible
 struct Foo {
     let size: CGSize
 } 

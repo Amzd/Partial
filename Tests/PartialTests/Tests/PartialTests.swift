@@ -22,7 +22,7 @@ extension Bar: PartialConvertible {
         self.str = try partial.value(for: \.str)
         self.baz = try partial.value(for: \.baz)
     }
-    
+
     func partial() -> Partial<Self> {
         var partial = Partial<Self>()
         partial.str = str
@@ -74,7 +74,7 @@ final class PartialTests: XCTestCase {
         XCTAssertNil(partial.bar.str)
         XCTAssertNil(partial.bar.baz)
         XCTAssertNil(partial.bar.baz.str)
-        
+
         partial.bar = Bar(str: "hello", baz: Baz(str: "world"))
         XCTAssertEqual(partial.bar.str, "hello")
         XCTAssertEqual(partial.bar.baz, Baz(str: "world"))
@@ -83,11 +83,11 @@ final class PartialTests: XCTestCase {
         partial.bar.str = nil
         XCTAssertNil(partial.bar)
         XCTAssertNil(partial.bar.str)
-        
+
         // Partial value stays
         XCTAssertEqual(partial.bar.baz, Baz(str: "world"))
         XCTAssertEqual(partial.bar.baz.str, "world")
-        
+
         // Optionals
         partial.opt = nil
         XCTAssertNil(partial.opt)
@@ -108,7 +108,7 @@ final class PartialTests: XCTestCase {
         partial.optBar.baz.str = nil
         XCTAssertEqual(try partial.complete(), Foo(str: "hi", bar: Bar(str: "hello", baz: Baz(str: "world")), opt: nil, optBar: nil))
     }
-    
+
     func testMacro() {
         let source: SourceFileSyntax =
             """
@@ -118,27 +118,27 @@ final class PartialTests: XCTestCase {
                 var bar: Bar
             }
             """
-        
+
         let file = BasicMacroExpansionContext.KnownSourceFile(
             moduleName: "MyModule",
             fullFilePath: "test.swift"
         )
-        
+
         let context = BasicMacroExpansionContext(sourceFiles: [source: file])
-        
+
         let transformedSF = source.expand(
             macros:["PartialConvertible": PartialConvertibleMacro.self],
             in: context
         )
-        
+
         let expectedDescription =
             """
-            
+
             struct Foo {
                 var str: String
                 var bar: Bar
             }
-            
+
             extension Foo: PartialConvertible {
                 init(partial: Partial<Self>) throws {
                     self.str = try partial.value(for: \\.str)
@@ -152,7 +152,7 @@ final class PartialTests: XCTestCase {
                 }
             }
             """
-        
+
         XCTAssertEqual(transformedSF.description, expectedDescription)
     }
 }
