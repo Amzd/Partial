@@ -8,10 +8,10 @@ enum PartialConvertibleMacro: ExtensionMacro {
 
         return [try ExtensionDeclSyntax("""
         extension \(type.trimmed): PartialConvertible {
-            init(partial: Partial<Self>) throws {
+            public init(partial: Partial<Self>) throws {
                 \(raw: properties.map { "self.\($0) = try partial.value(for: \\.\($0))" }.joined(separator: "\n"))
             }
-            func partial() -> Partial<Self> {
+            public func partial() -> Partial<Self> {
                 var partial = Partial<Self>()
                 \(raw: properties.map { "partial.\($0) = \($0)" }.joined(separator: "\n"))
                 return partial
